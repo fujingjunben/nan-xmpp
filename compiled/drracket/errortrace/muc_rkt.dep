@@ -1,0 +1,1 @@
+("5.3.1" ("fe9fedd8bda79dc22956b62cd9b17bc2c10fd9ab" . "380e8916180582bd1ec9a5b9bca67d566548f622") (collects #"racket" #"base.rkt") (collects #"srfi" #"13.rkt") (collects #"errortrace" #"errortrace-key.rkt") #"/home/danil/racket/nan-xmpp/utils.rkt" #"/home/danil/racket/nan-xmpp/xmpp.rkt" (collects #"racket" #"base" #"lang" #"reader.rkt"))
