@@ -12,7 +12,13 @@
 
 (provide (all-defined-out))
 
-(define xmpp-handlers `#hash())
+(define xmpp-handlers (make-hash)) ;; a hash of tags and functions (possibly extend to using sxpaths and multiple handlers)
+
+(define (set-xmpp-handler type fcn)
+  (dict-set! xmpp-handlers type fcn))
+
+(define (remove-xmpp-handler type fcn)
+  (dict-remove! xmpp-handlers type fcn))
 
 (define (run-xmpp-handler type sz)
   (let ((fcn (dict-ref xmpp-handlers type #f))) 
@@ -21,6 +27,7 @@
                 (fcn sz)))))
 
 ;; no real parsing yet. dispatches any received xml stanzas as sxml
+
 (define (parse-xmpp-response str)
   (when (> (string-length str) 0)
     (let ((sz (ssax:xml->sxml (open-input-string (clean str)) '())))
@@ -34,9 +41,15 @@
          (run-xmpp-handler 'iq sz))
         ((equal? 'presence (caadr sz)) 
          (run-xmpp-handler 'presence sz))
-	((equal? 'stanza (caadr sz))
-	 (run-xmpp-handler 'stanza sz))
         (else (run-xmpp-handler 'other sz))))))
+
+;; response handler
+(define (xmpp-response-handler in)
+  (thread (lambda () 
+            (let loop () 
+              (parse-xmpp-response (read-async in))
+              (sleep 0.1) ;; slight delay to avoid a tight loop
+              (loop)))))
 
 ;; QND hack to filter out anything not a message, iq or presence
 (define (clean str)
