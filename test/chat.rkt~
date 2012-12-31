@@ -1,0 +1,6 @@
+#lang racket/base
+
+(require "main.rkt")
+(define conn (new-connection "draugr.de"))
+(open-session (connection-o-port conn) "woof@draugr.de/pyos" "password")
+(send-string (connection-o-port conn) (message "marisa@pyos.net" "asd"))
