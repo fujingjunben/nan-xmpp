@@ -14,7 +14,7 @@
           [i-port input-port?]
           [o-port output-port?]
           [custodian custodian?])]
- [send-string (connection? string? . -> . any)]
+ [send-string (port? string? . -> . any)]
  [new-connection (string? . -> . connection?)]
  [kill-connection! (connection? . -> . void)])
 

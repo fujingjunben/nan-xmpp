@@ -3,12 +3,19 @@
 (require racket/contract
 	 racket/list
 	 racket/async-channel
+	 racket/dict
 	 "utils.rkt"
 	 "xmpp.rkt"
-	 "connection.rkt")
+	 "connection.rkt"
+	 (planet lizorkin/sxml:2:1/sxml)  ;; encoding xml
+	 (planet lizorkin/ssax:2:0/ssax)) ;; decoding xml
+
+(provide (all-defined-out))
+
+(define xmpp-handlers `#hash())
 
 (define (run-xmpp-handler type sz)
-  (let ((fcn (dict-ref (xmpp-handlers) type #f))) 
+  (let ((fcn (dict-ref xmpp-handlers type #f))) 
     (when fcn (begin
                 (debugf "attempting to run handler ~a.~%" fcn)
                 (fcn sz)))))
