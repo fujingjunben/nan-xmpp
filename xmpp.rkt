@@ -104,8 +104,10 @@
               (session (@ (xmlns "urn:ietf:params:xml:ns:xmpp-session")))))) 
 
 ;; messages
-(define (message to body)
-  (ssxml `(message (@ (to ,to) (type "chat")) (body ,body))))
+(define (message #:to to
+                 #:body body
+                 #:type (type "chat"))
+  (ssxml `(message (@ (to ,to) (type ,type)) (body ,body))))
 
 
 ; presence
