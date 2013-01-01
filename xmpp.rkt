@@ -105,7 +105,8 @@
 
 ;; messages
 (define (message to body)
-  (ssxml `(message (@ (to ,to)) (body ,body))))
+  (ssxml `(message (@ (to ,to) (type "chat")) (body ,body))))
+
 
 ; presence
 (define (presence #:from (from "")
