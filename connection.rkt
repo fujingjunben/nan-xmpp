@@ -8,13 +8,14 @@
 
 (define-struct connection (host i-port o-port custodian)
   #:mutable)
-
+(provide xmpp-send)
 (provide/contract
  [struct connection
          ([host string?]
           [i-port input-port?]
           [o-port output-port?]
           [custodian custodian?])]
+; [xmpp-send (connection? any . -> . any)]
  [send-string (port? string? . -> . any)]
  [new-connection (string? . -> . connection?)]
  [kill-connection! (connection? . -> . void)])
