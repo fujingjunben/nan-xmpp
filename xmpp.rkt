@@ -93,21 +93,21 @@
 
 ;; authentication
 (define (xmpp-auth username password resource)
-  (ssxml `(iq (@ (type "set") (id "auth")) 
-              (query (@ (xmlns "jabber:iq:auth")) 
-                     (username ,username) 
-                     (password ,password)
-                     (resource ,resource)))))
+  `(iq (@ (type "set") (id "auth")) 
+       (query (@ (xmlns "jabber:iq:auth")) 
+              (username ,username) 
+              (password ,password)
+              (resource ,resource))))
 
 (define (xmpp-session host)
-  (ssxml `(iq (@ (to ,host) (type "set") (id "session")) 
-              (session (@ (xmlns "urn:ietf:params:xml:ns:xmpp-session")))))) 
+  `(iq (@ (to ,host) (type "set") (id "session")) 
+       (session (@ (xmlns "urn:ietf:params:xml:ns:xmpp-session"))))) 
 
 ;; messages
 (define (message #:to to
                  #:body body
                  #:type (type "chat"))
-  (ssxml `(message (@ (to ,to) (type ,type)) (body ,body))))
+  `(message (@ (to ,to) (type ,type)) (body ,body)))
 
 
 ; presence
@@ -117,9 +117,9 @@
                   #:show (show "") 
                   #:status (status ""))
   (cond ((not (string=? status ""))
-         (ssxml `(presence (@ (type "probe")) (status ,status))))
-        ((string=? type "") "<presence/>")
-        (else (ssxml `(presence (@ (type ,type)))))))
+         `(presence (@ (type "probe")) (status ,status)))
+        ((string=? type "") '(presence))
+        (else `(presence (@ (type ,type))))))
 
 ;; queries
 (define (iq body 
@@ -127,7 +127,7 @@
             #:to (to "") 
             #:type (type "") 
             #:id (id ""))
-  (ssxml `(iq (@ (to ,to) (type ,type) ,body))))
+  `(iq (@ (to ,to) (type ,type) ,body)))
 
 ;; curried stanza disection (sxml stanza -> string)
 (define ((sxpath-element xpath (ns "")) stanza) 
@@ -163,28 +163,28 @@
 
 ;; request the roster from server
 (define (request-roster from)
-  (ssxml `(iq (@ (from ,from) (type "get") (id "roster_1")) 
-              (query (@ (xmlns "jabber:iq:roster"))))))
+  `(iq (@ (from ,from) (type "get") (id "roster_1")) 
+       (query (@ (xmlns "jabber:iq:roster")))))
 
 ;; add an item to the roster 
 (define (add-to-roster from jid name group)
-  (ssxml `(iq (@ (from ,from) (type "set") (id "roster_2")) 
-              (query (@ (xmlns "jabber:iq:roster"))
-                     (item (@ (jid ,jid) (name ,name))
-                           (group ,group)))))) 
+  `(iq (@ (from ,from) (type "set") (id "roster_2")) 
+       (query (@ (xmlns "jabber:iq:roster"))
+              (item (@ (jid ,jid) (name ,name))
+                    (group ,group))))) 
 
 ;; update an item in the roster 
 (define (update-roster from jid name group)
-  (ssxml `(iq (@ (from ,from) (type "set") (id "roster_3")) 
-              (query (@ (xmlns "jabber:iq:roster"))
-                     (item (@ (jid ,jid) (name ,name))
-                           (group ,group)))))) 
+  `(iq (@ (from ,from) (type "set") (id "roster_3")) 
+       (query (@ (xmlns "jabber:iq:roster"))
+              (item (@ (jid ,jid) (name ,name))
+                    (group ,group))))) 
 
 ;; remove an item from the roster
 (define (remove-from-roster from jid)
-  (ssxml `(iq (@ (from ,from) (type "set") (id "roster_4")) 
-              (query (@ (xmlns "jabber:iq:roster"))
-                     (item (@ (jid ,jid) (subscription "remove"))))))) 
+  `(iq (@ (from ,from) (type "set") (id "roster_4")) 
+       (query (@ (xmlns "jabber:iq:roster"))
+              (item (@ (jid ,jid) (subscription "remove")))))) 
 
 
 ;;;;; ;   ; ;;  ;   ;
@@ -194,8 +194,8 @@
 ;;;;;; ;;     ;; ;
 
 (define (reg1)
-  (ssxml `(iq (@ (type "get") (id "reg1"))
-              (query (@ (xmlns "jabber:iq:register"))))))
+  `(iq (@ (type "get") (id "reg1"))
+       (query (@ (xmlns "jabber:iq:register")))))
 
 
 ;;;;;;;;; ; ;; ; ; ;;  ;;    ;  ;

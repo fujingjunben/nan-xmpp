@@ -3,17 +3,19 @@
 (require racket/contract
 	 racket/tcp ;; networking
 	 openssl    ;; ssl/tls
-	 "utils.rkt")
+	 "utils.rkt"
+         (planet lizorkin/sxml:2:1/sxml))
 
 (define-struct connection (host i-port o-port custodian)
   #:mutable)
-
+(provide xmpp-send)
 (provide/contract
  [struct connection
          ([host string?]
           [i-port input-port?]
           [o-port output-port?]
           [custodian custodian?])]
+; [xmpp-send (connection? any . -> . any)]
  [send-string (port? string? . -> . any)]
  [new-connection (string? . -> . connection?)]
  [kill-connection! (connection? . -> . void)])
@@ -33,6 +35,9 @@
 ;; moved to xmpp-sasl until it 'works'
 
 (define session->tls? #f) ;; changes state when a tls proceed is recived
+
+(define (xmpp-send conn sz)
+  (send-string (connection-o-port conn) (srl:sxml->xml sz)))
 
 (define (send-string out str)
   (debugf "sending: ~a ~%~%" str) 
