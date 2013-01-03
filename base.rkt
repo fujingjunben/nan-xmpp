@@ -7,7 +7,7 @@
 	 "utils.rkt"
 	 "xmpp.rkt"
 	 "connection.rkt"
-         xml) ;; decoding xml
+         xml) 
 
 (provide (all-defined-out))
 

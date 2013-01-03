@@ -4,7 +4,6 @@
 	 racket/tcp ;; networking
 	 openssl    ;; ssl/tls
 	 "utils.rkt"
-;         (planet lizorkin/sxml:2:1/sxml)
          xml)
 
 (define-struct connection (host i-port o-port custodian)
