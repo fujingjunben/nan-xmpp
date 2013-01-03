@@ -31,7 +31,6 @@
 ;;
 ;;;; ;;
 
-
 ;; moved to xmpp-sasl until it 'works'
 
 (define session->tls? #f) ;; changes state when a tls proceed is recived
