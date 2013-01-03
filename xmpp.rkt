@@ -72,9 +72,9 @@
 	 racket/dict
 	 mzlib/os			 ;; hostname
 	 srfi/13                         ;; jid decoding
-         (planet lizorkin/sxml:2:1/sxml) ;; encoding xml
-	 (planet lizorkin/ssax:2:0/ssax) ;; decoding xml
-	 "utils.rkt")
+	 "utils.rkt"
+         xml
+         xml/path)
 			 
 (provide (all-defined-out))
 
@@ -93,21 +93,21 @@
 
 ;; authentication
 (define (xmpp-auth username password resource)
-  `(iq (@ (type "set") (id "auth")) 
-       (query (@ (xmlns "jabber:iq:auth")) 
+  `(iq ((type "set") (id "auth")) 
+       (query ((xmlns "jabber:iq:auth")) 
               (username ,username) 
               (password ,password)
               (resource ,resource))))
 
 (define (xmpp-session host)
-  `(iq (@ (to ,host) (type "set") (id "session")) 
-       (session (@ (xmlns "urn:ietf:params:xml:ns:xmpp-session"))))) 
+  `(iq ((to ,host) (type "set") (id "session")) 
+       (session ((xmlns "urn:ietf:params:xml:ns:xmpp-session"))))) 
 
 ;; messages
 (define (message #:to to
                  #:body body
                  #:type (type "chat"))
-  `(message (@ (to ,to) (type ,type)) (body ,body)))
+  `(message ((to ,to) (type ,type)) (body ,body)))
 
 
 ; presence
@@ -117,9 +117,9 @@
                   #:show (show "") 
                   #:status (status ""))
   (cond ((not (string=? status ""))
-         `(presence (@ (type "probe")) (status ,status)))
+         `(presence ((type "probe")) (status ,status)))
         ((string=? type "") '(presence))
-        (else `(presence (@ (type ,type))))))
+        (else `(presence ((type ,type))))))
 
 ;; queries
 (define (iq body 
@@ -127,32 +127,35 @@
             #:to (to "") 
             #:type (type "") 
             #:id (id ""))
-  `(iq (@ (to ,to) (type ,type) ,body)))
+  `(iq ((to ,to) (type ,type) ,body)))
 
 ;; curried stanza disection (sxml stanza -> string)
-(define ((sxpath-element xpath (ns "")) stanza) 
-  (let ((node ((sxpath xpath (list (cons 'ns ns))) stanza)))
-    (if (empty? node) "" (car node))))
-
+;; (define ((sxpath-element xpath (ns "")) stanza) 
+;;   (let ((node ((sxpath xpath (list (cons 'ns ns))) stanza)))
+;;     (if (empty? node) "" (car node))))
+;; curried stanz disection (xexpr stanza -> string)
+(define ((se-path-element sepath) stanza) 
+  (let ((node (se-path* sepath stanza)))
+    (if (empty? node) "" node)))
 ;; message 
-(define message-from (sxpath-element "message/@from/text()"))
-(define message-to (sxpath-element "message/@to/text()"))
-(define message-id (sxpath-element "message/@id/text()"))
-(define message-type (sxpath-element "message/@type/text()"))
-(define message-body (sxpath-element "message/body/text()"))
-(define message-subject (sxpath-element "message/subject/text()"))
+(define message-from (se-path-element '(message #:from)))
+(define message-to (se-path-element '(message #:to)))
+(define message-id (se-path-element '(message #:id)))
+(define message-type (se-path-element '(message #:type)))
+(define message-body (se-path-element '(message body)))
+(define message-subject (se-path-element '(message subject)))
 
 ;; info/query
-(define iq-type (sxpath-element "iq/@type/text()"))
-(define iq-id (sxpath-element "iq/@id/text()"))
-(define iq-error-type (sxpath-element "iq/error/@type/text()"))
-(define iq-error-text (sxpath-element "iq/error/text()"))
-(define iq-error (sxpath-element "iq/error"))
+(define iq-type (se-path-element '(iq #:type)))
+(define iq-id (se-path-element '(iq #:id)))
+(define iq-error-type (se-path-element '(iq error #:type)))
+(define iq-error-text (se-path-element '(iq error)))
+;(define iq-error (se-path-element '(iq error)))
 
 ;; presence
-(define presence-show (sxpath-element "presence/show/text()"))
-(define presence-from (sxpath-element "presence/@from/text()"))
-(define presence-status (sxpath-element "presence/status/text()"))
+(define presence-show (se-path-element '(presence show)))
+(define presence-from (se-path-element '(presence #:from)))
+(define presence-status (se-path-element '(presence status)))
 
 
 ;;;;;;;;;; ; ;     ;  ;;  ;
@@ -163,28 +166,28 @@
 
 ;; request the roster from server
 (define (request-roster from)
-  `(iq (@ (from ,from) (type "get") (id "roster_1")) 
-       (query (@ (xmlns "jabber:iq:roster")))))
+  `(iq ((from ,from) (type "get") (id "roster_1")) 
+       (query ((xmlns "jabber:iq:roster")))))
 
 ;; add an item to the roster 
 (define (add-to-roster from jid name group)
-  `(iq (@ (from ,from) (type "set") (id "roster_2")) 
-       (query (@ (xmlns "jabber:iq:roster"))
-              (item (@ (jid ,jid) (name ,name))
+  `(iq ((from ,from) (type "set") (id "roster_2")) 
+       (query ((xmlns "jabber:iq:roster"))
+              (item ((jid ,jid) (name ,name))
                     (group ,group))))) 
 
 ;; update an item in the roster 
 (define (update-roster from jid name group)
-  `(iq (@ (from ,from) (type "set") (id "roster_3")) 
-       (query (@ (xmlns "jabber:iq:roster"))
-              (item (@ (jid ,jid) (name ,name))
+  `(iq ((from ,from) (type "set") (id "roster_3")) 
+       (query ((xmlns "jabber:iq:roster"))
+              (item ((jid ,jid) (name ,name))
                     (group ,group))))) 
 
 ;; remove an item from the roster
 (define (remove-from-roster from jid)
-  `(iq (@ (from ,from) (type "set") (id "roster_4")) 
-       (query (@ (xmlns "jabber:iq:roster"))
-              (item (@ (jid ,jid) (subscription "remove")))))) 
+  `(iq ((from ,from) (type "set") (id "roster_4")) 
+       (query ((xmlns "jabber:iq:roster"))
+              (item ((jid ,jid) (subscription "remove")))))) 
 
 
 ;;;;; ;   ; ;;  ;   ;
@@ -194,8 +197,8 @@
 ;;;;;; ;;     ;; ;
 
 (define (reg1)
-  `(iq (@ (type "get") (id "reg1"))
-       (query (@ (xmlns "jabber:iq:register")))))
+  `(iq ((type "get") (id "reg1"))
+       (query ((xmlns "jabber:iq:register")))))
 
 
 ;;;;;;;;; ; ;; ; ; ;;  ;;    ;  ;
@@ -223,10 +226,16 @@
 ;; handler to print roster
 
 (define (roster-jids sz) 
-  ((sxpath "iq/ns:query/ns:item/@jid/text()" '(( ns . "jabber:iq:roster"))) sz))
+  (if (equal? "jabber:iq:roster"
+           (se-path* '(iq query #:xmlns) sz))
+      (se-path*/list '(iq query item #:jid) sz)
+      '()))
 
 (define (roster-items sz)
-  ((sxpath-element "iq/ns:query/ns:item"  '(( ns . "jabber:iq:roster"))) sz))
+  (if (equal? "jabber:iq:roster"
+              (se-path* '(iq query #:xmlns) sz))
+      (filter list? (se-path*/list '(iq query) sz))
+      '()))
 
 (define (print-roster sz)
   (when (and (string=? (iq-type sz) "result")

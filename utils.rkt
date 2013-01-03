@@ -1,13 +1,11 @@
 #lang racket/base
 (require racket/list
-	 racket/contract
-	 (planet lizorkin/sxml:2:1/sxml) ;; encoding xml
-	 (planet lizorkin/ssax:2:0/ssax)) ;; decoding xml
+	 racket/contract) 
 
 (provide (contract-out [hash-append (hash? hash? . -> . hash?)]
 		       [read-async (port? . -> . string?)]
 		       [read-async-bytes (port? . -> . (listof byte?))])
-	 ssxml debug? debugf)
+         debug? debugf)
 
 ;;;; ;  ;;  ;
 ;; 
@@ -27,8 +25,6 @@
 ;; networking
 ;;
 ;;;;;; ;;  ;;  ;  ; ;   ;
-
-(define ssxml srl:sxml->xml-noindent) 
 
 (define (read-async in)
   (bytes->string/utf-8 (list->bytes (read-async-bytes in))))

@@ -4,7 +4,7 @@
 	 racket/tcp ;; networking
 	 openssl    ;; ssl/tls
 	 "utils.rkt"
-         (planet lizorkin/sxml:2:1/sxml))
+         xml)
 
 (define-struct connection (host i-port o-port custodian)
   #:mutable)
@@ -31,13 +31,12 @@
 ;;
 ;;;; ;;
 
-
 ;; moved to xmpp-sasl until it 'works'
 
 (define session->tls? #f) ;; changes state when a tls proceed is recived
 
 (define (xmpp-send conn sz)
-  (send-string (connection-o-port conn) (srl:sxml->xml sz)))
+  (send-string (connection-o-port conn) (xexpr->string sz)))
 
 (define (send-string out str)
   (debugf "sending: ~a ~%~%" str) 

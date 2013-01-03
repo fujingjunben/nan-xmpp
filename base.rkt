@@ -7,8 +7,7 @@
 	 "utils.rkt"
 	 "xmpp.rkt"
 	 "connection.rkt"
-	 (planet lizorkin/sxml:2:1/sxml)  ;; encoding xml
-	 (planet lizorkin/ssax:2:0/ssax)) ;; decoding xml
+         xml) 
 
 (provide (all-defined-out))
 
@@ -30,17 +29,16 @@
 
 (define (parse-xmpp-response str)
   (when (> (string-length str) 0)
-    (let ((sz (ssax:xml->sxml (open-input-string (clean str)) '())))
-      ;;(let ((sz (lazy:xml->sxml (open-input-string str) '())))
+    (let ((sz (string->xexpr (clean str))))
       (cond
-        ((equal? '(null) (cadr sz)) 
-         (newline))
-        ((equal? 'message (caadr sz))
-         (run-xmpp-handler 'message sz))
-        ((equal? 'iq (caadr sz)) 
-         (run-xmpp-handler 'iq sz))
-        ((equal? 'presence (caadr sz)) 
-         (run-xmpp-handler 'presence sz))
+       ((equal? 'null (car sz)) 
+        (newline))
+       ((equal? 'message (car sz))
+        (run-xmpp-handler 'message sz))
+       ((equal? 'iq (car sz)) 
+        (run-xmpp-handler 'iq sz))
+       ((equal? 'presence (car sz)) 
+        (run-xmpp-handler 'presence sz))
         (else (run-xmpp-handler 'other sz))))))
 
 ;; response handler
