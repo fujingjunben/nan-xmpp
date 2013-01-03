@@ -7,8 +7,6 @@
 	 "utils.rkt"
 	 "xmpp.rkt"
 	 "connection.rkt"
-	 ;(planet lizorkin/sxml:2:1/sxml)  ;; encoding xml
-	 ;(planet lizorkin/ssax:2:0/ssax)
          xml) ;; decoding xml
 
 (provide (all-defined-out))
