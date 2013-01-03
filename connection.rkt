@@ -36,7 +36,7 @@
 (define session->tls? #f) ;; changes state when a tls proceed is recived
 
 (define (xmpp-send conn sz)
-  (send-string (connection-o-port conn) (xexpr->xml sz)))
+  (send-string (connection-o-port conn) (xexpr->string sz)))
 
 (define (send-string out str)
   (debugf "sending: ~a ~%~%" str) 

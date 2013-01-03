@@ -72,8 +72,6 @@
 	 racket/dict
 	 mzlib/os			 ;; hostname
 	 srfi/13                         ;; jid decoding
-;         (planet lizorkin/sxml:2:1/sxml) ;; encoding xml
-;	 (planet lizorkin/ssax:2:0/ssax) ;; decoding xml
 	 "utils.rkt"
          xml
          xml/path)
@@ -228,7 +226,6 @@
 ;; handler to print roster
 
 (define (roster-jids sz) 
- ;(sxpath "iq/ns:query/ns:item/@jid/text()" '(( ns . "jabber:iq:roster"))) sz
   (if (equal? "jabber:iq:roster"
            (se-path* '(iq query #:xmlns) sz))
       (se-path*/list '(iq query item #:jid) sz)
@@ -239,9 +236,6 @@
               (se-path* '(iq query #:xmlns) sz))
       (filter list? (se-path*/list '(iq query) sz))
       '()))
-
- ; ((sxpath-element "iq/ns:query/ns:item"  '(( ns . "jabber:iq:roster"))) sz)
-
 
 (define (print-roster sz)
   (when (and (string=? (iq-type sz) "result")

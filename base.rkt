@@ -29,16 +29,16 @@
 
 (define (parse-xmpp-response str)
   (when (> (string-length str) 0)
-    (let ((sz (xml->xexpr (open-input-string (clean str)) '())))
+    (let ((sz (string->xexpr (clean str))))
       (cond
-        ((equal? '(null) (cadr sz)) 
-         (newline))
-        ((equal? 'message (caadr sz))
-         (run-xmpp-handler 'message sz))
-        ((equal? 'iq (caadr sz)) 
-         (run-xmpp-handler 'iq sz))
-        ((equal? 'presence (caadr sz)) 
-         (run-xmpp-handler 'presence sz))
+       ((equal? 'null (car sz)) 
+        (newline))
+       ((equal? 'message (car sz))
+        (run-xmpp-handler 'message sz))
+       ((equal? 'iq (car sz)) 
+        (run-xmpp-handler 'iq sz))
+       ((equal? 'presence (car sz)) 
+        (run-xmpp-handler 'presence sz))
         (else (run-xmpp-handler 'other sz))))))
 
 ;; response handler
