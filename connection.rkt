@@ -1,20 +1,25 @@
 #lang racket/base
 
-(require racket/contract
+(require racket/list
+         racket/contract
 	 racket/tcp ;; networking
 	 openssl    ;; ssl/tls
 	 "utils.rkt"
-         xml)
+         "xmpp.rkt"
+         xml
+         xml/path)
 
-(define-struct connection (host i-port o-port custodian)
-  #:mutable)
-(provide xmpp-send)
+(struct connection (host i-port o-port custodian buffer) #:mutable)
+(provide xmpp-send
+         open-session
+         xmpp-receive)
 (provide/contract
  [struct connection
          ([host string?]
           [i-port input-port?]
           [o-port output-port?]
-          [custodian custodian?])]
+          [custodian custodian?]
+          [buffer list?])]
 ; [xmpp-send (connection? any . -> . any)]
  [send-string (port? string? . -> . any)]
  [new-connection (string? . -> . connection?)]
@@ -35,6 +40,22 @@
 
 (define session->tls? #f) ;; changes state when a tls proceed is recived
 
+(define (xmpp-receive conn)
+  (cond
+   ((empty? (connection-buffer conn)) ;;if there is no stanza in buffer - get new one
+    (define str (clean (read-async (connection-i-port conn)))) ;;string from port
+    (define szs (se-path*/list '(port)
+                               (string->xexpr
+                                (string-append "<port>" str "</port>")))) 
+    (cond 
+     ((empty? szs) #f)
+     ((empty? (cdr szs)) (car szs))
+     (else (set-connection-buffer! conn (cdr szs))
+           (car szs))))
+   (else (define b (connection-buffer conn))
+         (set-connection-buffer! conn (cdr b))
+         (car b))))
+
 (define (xmpp-send conn sz)
   (send-string (connection-o-port conn) (xexpr->string sz)))
 
@@ -48,8 +69,17 @@
       (let-values ([(in out)
 		    (ssl-connect host ssl-port 'tls)])
 	(file-stream-buffer-mode out 'line)
-	(make-connection
-	 host in out conn-cust))))
+	(connection
+	 host in out conn-cust '()))))
+
+(define (open-session conn jid pass)
+  (let ((host (jid-host jid))
+	(user (jid-user jid))
+	(resource (jid-resource jid)))
+    (send-string (connection-o-port conn) (xmpp-stream host))
+    (xmpp-send conn (xmpp-session host))           
+    (xmpp-send conn (xmpp-auth user pass resource))
+    (xmpp-send conn (presence))))
 
 (define (kill-connection! conn)
   (with-handlers ([exn:fail:network? void])
