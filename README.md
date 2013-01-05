@@ -20,6 +20,41 @@ currently documented in the file `xmpp.rkt`
 
 ## Example Chat Client
 
+    #lang racket/base
+    (require  "../nan-xmpp/main.rkt"
+              racket/match)
+    
+    (define (read-input prompt)
+      (display prompt)
+      (read-line))
+    
+    (define jid (read-input "jid: "))
+    (define password (read-input "password: "))
+    (define to (read-input "chat to: "))
+    
+    (define conn (new-connection (jid-host jid)))
+    (open-session conn jid password)
+    
+    (define handler-thread
+      (parameterize ((current-custodian (connection-custodian conn)))
+          (thread (lambda ()
+                    (let handler-loop ()
+                      (define sz (xmpp-receive conn))
+                      (match sz
+                        ((list 'message _ ...) (print-message sz))
+                        ((list 'presence _ ...) (print-presence sz))
+                        (_ 'do-nothing))
+                      (sleep 0.1)
+                      (handler-loop))))))
+    
+    (let message-loop () 
+      (define txt (read-line))
+      (unless (string=? txt "/exit")
+        (xmpp-send conn (message #:to to #:body txt))                      
+        (message-loop)))
+    
+    (kill-connection! conn)
+
 ## possibly interesting extensions to implement. 
 
 see http://xmpp.org/extensions/
