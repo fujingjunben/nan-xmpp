@@ -23,8 +23,10 @@
 ; [xmpp-send (connection? any . -> . any)]
  [send-string (port? string? . -> . any)]
  [new-connection (string? . -> . connection?)]
- [kill-connection! (connection? . -> . void)])
+ [kill-connection! (connection? . -> . void)]
+ [xmpp-version (-> string?)])
 
+(define (xmpp-version) "nan-xmpp v 0.17")
 (define port 5222)
 (define ssl-port 5223)
 
