@@ -46,6 +46,7 @@
   (cond
    ((empty? (connection-buffer conn)) ;;if there is no stanza in buffer - get new one
     (define str (clean (read-async (connection-i-port conn)))) ;;string from port
+    (debugf str)
     (define szs (se-path*/list '(port)
                                (string->xexpr
                                 (string-append "<port>" str "</port>")))) 
