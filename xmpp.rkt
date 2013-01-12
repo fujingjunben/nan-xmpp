@@ -135,7 +135,7 @@
 ;;     (if (empty? node) "" (car node))))
 ;; curried stanz disection (xexpr stanza -> string)
 (define ((se-path-element sepath) stanza) 
-  (let ((node (se-path* sepath stanza)))
+  (let ((node (apply string-append  (se-path*/list sepath stanza))))
     (if (empty? node) "" node)))
 ;; message 
 (define message-from (se-path-element '(message #:from)))
