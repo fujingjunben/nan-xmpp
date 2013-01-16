@@ -12,7 +12,8 @@
 (struct connection (host i-port o-port custodian buffer) #:mutable)
 (provide xmpp-send
          open-session
-         xmpp-receive)
+         xmpp-receive
+         xmpp-handle)
 (provide/contract
  [struct connection
          ([host string?]
@@ -26,7 +27,7 @@
  [kill-connection! (connection? . -> . void)]
  [xmpp-version (-> string?)])
 
-(define (xmpp-version) "nan-xmpp v 0.17")
+(define (xmpp-version) "nan-xmpp v 0.20")
 (define port 5222)
 (define ssl-port 5223)
 
@@ -41,6 +42,47 @@
 ;; moved to xmpp-sasl until it 'works'
 
 (define session->tls? #f) ;; changes state when a tls proceed is recived
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;xmpp-handle - abstraction over threads that check for new incoming messages
+;;              and run handling procedures on them
+;;Usage:
+;;(xmpp-handle 'set-handler conn handler-proc)
+;;(xmpp-handle 'stop-handler conn)
+(struct h-thread (handler thread) #:mutable)
+
+(define xmpp-handle
+  (let ((handler-hash (make-hash)))
+    (lambda args
+
+      (define (receive-handle-thread conn)
+        ;;creates a thread with handling procedure from handler-hash
+        (parameterize ((current-custodian (connection-custodian conn)))
+          (thread (lambda ()
+                    (let handler-loop ()
+                      (define sz (xmpp-receive conn))
+                      (define handler-proc (h-thread-handler
+                                            (hash-ref handler-hash conn)))
+                      (handler-proc sz)
+                      (when (empty? (connection-buffer conn))
+                        (sleep 0.1))
+                      (handler-loop))))))
+      
+      (case (car args)
+        ('set-handler
+         (let* ((conn (cadr args))
+                (handler-proc (caddr args))
+                (h-t (hash-ref handler-hash conn #f)))
+           (if h-t
+               (set-h-thread-handler! h-t handler-proc)
+               (hash-set! handler-hash
+                          conn (h-thread handler-proc
+                                         (receive-handle-thread conn))))))
+        ('stop-handler
+         (let* ((conn (cadr args))
+                (h-t (hash-ref handler-hash conn #f)))
+           (when h-t
+             (kill-thread (h-thread-thread h-t))
+             (hash-remove! handler-hash conn))))))))
 
 (define (xmpp-receive conn)
   (cond

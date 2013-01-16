@@ -27,7 +27,7 @@ currently documented in the file `xmpp.rkt`
     (define (read-input prompt)
       (display prompt)
       (read-line))
-    
+   
     (define jid (read-input "jid: "))
     (define password (read-input "password: "))
     (define to (read-input "chat to: "))
@@ -35,17 +35,13 @@ currently documented in the file `xmpp.rkt`
     (define conn (new-connection (jid-host jid)))
     (open-session conn jid password)
     
-    (define handler-thread
-      (parameterize ((current-custodian (connection-custodian conn)))
-          (thread (lambda ()
-                    (let handler-loop ()
-                      (define sz (xmpp-receive conn))
-                      (match sz
-                        ((list 'message _ ...) (print-message sz))
-                        ((list 'presence _ ...) (print-presence sz))
-                        (_ 'do-nothing))
-                      (sleep 0.1)
-                      (handler-loop))))))
+    (define (handler sz)
+      (match sz
+        ((list 'message _ ...) (print-message sz))
+        ((list 'presence _ ...) (print-presence sz))
+        (_ 'do-nothing)))
+    
+    (xmpp-handle 'set-handler conn handler)
     
     (let message-loop () 
       (define txt (read-line))
