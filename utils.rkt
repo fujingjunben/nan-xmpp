@@ -1,13 +1,14 @@
 #lang racket/base
 (require racket/list
 	 racket/contract
-         racket/string) 
+         racket/string
+         net/base64) 
 
 (provide (contract-out [hash-append (hash? hash? . -> . hash?)]
 		       [read-async (port? . -> . string?)]
 		       [read-async-bytes (port? . -> . (listof byte?))])
          debug? debugf
-         clean)
+         clean sasl-plain-string)
 
 ;;;; ;  ;;  ;
 ;; 
@@ -38,6 +39,17 @@
     bstr))
 
 ;;; other
+;; sasl authentication string
+(define (sasl-plain-string username password)
+  (let ((s (bytes->string/utf-8
+            (base64-encode
+             (string->bytes/utf-8
+              (string-append "\u0000"
+                             username
+                             "\u0000"
+                             password))))))
+    (substring s 0 (- (string-length s) 2)))) ;; remove CRLF in the end of string
+
 (define (hash-append hs-1 hs-2)
   (if (= 0 (hash-count hs-2))
       hs-1

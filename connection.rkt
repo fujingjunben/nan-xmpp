@@ -9,7 +9,8 @@
          xml
          xml/path)
 
-(struct connection (host i-port o-port custodian buffer) #:mutable)
+(struct connection (host i-port o-port custodian buffer encryption) #:mutable)
+
 (provide xmpp-send
          open-session
          xmpp-receive
@@ -20,14 +21,16 @@
           [i-port input-port?]
           [o-port output-port?]
           [custodian custodian?]
-          [buffer list?])]
+          [buffer list?]
+          [encryption symbol?])]
 ; [xmpp-send (connection? any . -> . any)]
  [send-string (port? string? . -> . any)]
  [new-connection (string? . -> . connection?)]
  [kill-connection! (connection? . -> . void)]
  [xmpp-version (-> string?)])
 
-(define (xmpp-version) "nan-xmpp v 0.20")
+
+(define (xmpp-version) "nan-xmpp v 0.23")
 (define port 5222)
 (define ssl-port 5223)
 
@@ -39,9 +42,7 @@
 ;;
 ;;;; ;;
 
-;; moved to xmpp-sasl until it 'works'
-
-(define session->tls? #f) ;; changes state when a tls proceed is recived
+(define session->tls? #f) ;; changes state when a tls proceed is received
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;xmpp-handle - abstraction over threads that check for new incoming messages
 ;;              and run handling procedures on them
@@ -59,12 +60,10 @@
         (parameterize ((current-custodian (connection-custodian conn)))
           (thread (lambda ()
                     (let handler-loop ()
-                      (define sz (xmpp-receive conn))
+                      (define sz (xmpp-receive-blocking conn))
                       (define handler-proc (h-thread-handler
                                             (hash-ref handler-hash conn)))
                       (handler-proc sz)
-                      (when (empty? (connection-buffer conn))
-                        (sleep 0.1))
                       (handler-loop))))))
       
       (case (car args)
@@ -84,11 +83,19 @@
              (kill-thread (h-thread-thread h-t))
              (hash-remove! handler-hash conn))))))))
 
+(define (xmpp-receive-blocking conn)
+;;;loops until a stanza is received
+  (let loop ()
+    (let ((sz (xmpp-receive conn)))
+      (or sz
+          (begin (sleep 0.1)
+                 (loop))))))
+
 (define (xmpp-receive conn)
   (cond
    ((empty? (connection-buffer conn)) ;;if there is no stanza in buffer - get new one
     (define str (clean (read-async (connection-i-port conn)))) ;;string from port
-    (debugf str)
+    (or (= (string-length str) 0) (debugf "~a ~%" str))
     (define szs (se-path*/list '(port)
                                (string->xexpr
                                 (string-append "<port>" str "</port>")))) 
@@ -109,22 +116,69 @@
     (fprintf out "~A~%" str) (flush-output out))
 
 (define (new-connection host)
+  (with-handlers
+      ((exn:fail:network? (lambda (e) (new-connection-tcp host))))
     (define conn-cust (make-custodian))
     (parameterize ([current-custodian conn-cust])
       (let-values ([(in out)
-		    (ssl-connect host ssl-port 'tls)])
-	(file-stream-buffer-mode out 'line)
-	(connection
-	 host in out conn-cust '()))))
+                    (ssl-connect host ssl-port 'tls)])
+        (file-stream-buffer-mode out 'line)
+        (connection
+         host in out conn-cust '() 'tls)))))
 
-(define (open-session conn jid pass)
+(define (new-connection-tcp host)
+  (define conn-cust (make-custodian))
+  (parameterize ((current-custodian conn-cust))
+    (let-values ([(tcp-in tcp-out)
+                  (tcp-connect host port)])
+      (connection
+       host tcp-in tcp-out conn-cust '() 'none))))
+
+(define (open-session conn jid pass (encrypt #t))
   (let ((host (jid-host jid))
 	(user (jid-user jid))
 	(resource (jid-resource jid)))
     (send-string (connection-o-port conn) (xmpp-stream host))
-    (xmpp-send conn (xmpp-session host))           
-    (xmpp-send conn (xmpp-auth user pass resource))
-    (xmpp-send conn (presence))))
+    (cond
+     ((and encrypt (eq? (connection-encryption conn) 'none))
+      ;; tcp connection - tls/sasl are to negotiate
+      (xmpp-receive-blocking conn) ;receiving stream from server
+      (negotiate-tls conn)
+      (xmpp-send conn (sasl-plain-auth (jid-user jid) pass))
+      (unless (eq? (car (xmpp-receive-blocking conn))
+                   'success)
+        (raise "SASL negotiation failed"))
+      (send-string (connection-o-port conn) (xmpp-stream host))
+      (xmpp-receive-blocking conn) ;receiving stream
+      (xmpp-send conn (xmpp-bind))
+      (unless (string=? (iq-type (xmpp-receive-blocking conn))
+                   "result")
+        (raise "Resource binding failed")))
+     (else
+      ;; tls connection - everything should work just fine
+      (xmpp-send conn (xmpp-session host))           
+      (xmpp-send conn (xmpp-auth user pass resource))))))
+
+(define (negotiate-tls conn)
+  (xmpp-send conn (xmpp-starttls))
+  (let loop ()
+    (let ((sz (xmpp-receive-blocking conn)))
+      (displayln sz)
+      (case (car sz)
+        ('failure (raise "TLS negotiation failed"))
+        ('proceed (parameterize ((current-custodian (connection-custodian conn)))
+                    (let-values ([(ssl-in ssl-out)
+                                  (ports->ssl-ports (connection-i-port conn)
+                                                    (connection-o-port conn)
+                                                    #:encrypt 'tls)])
+                      (set-connection-i-port! conn ssl-in)
+                      (set-connection-o-port! conn ssl-out)
+                      (set-connection-encryption! conn 'tls)
+                      ;; send/receive stream-header
+                      (send-string (connection-o-port conn) (xmpp-stream (connection-host conn)))
+                      (xmpp-receive-blocking conn))))
+        (else (loop))))))
+
 
 (define (kill-connection! conn)
   (with-handlers ([exn:fail:network? void])

@@ -37,14 +37,13 @@
 ;;;   - parse (some) xml reponses from server
 ;;;   - handlers for responses
 ;;;   - basic roster handling (rfc 3921 sec.7)
+;;;   - plaintext/tls/sasl negotiation (rfc 3920 sec.5 & 6) 
+;;;   - encrypted connections using tls on port 5222
 ;;;
 ;;;  features to implement
 ;;;   - account creation
 ;;;   - managing subscriptions & rosters (rfc 3921 sec.6 & 8)
 ;;;   - error handling for rosters (rfc 3921 sec.7)
-;;;   - plaintext/tls/sasl negotiation (rfc 3920 sec.5 & 6) 
-;;;   - encrypted connections using tls on port 5222
-;;;   - correct namespaces in sxml
 ;;;   - message types
 ;;;   - maintain session ids
 ;;;   - maintain threads
@@ -60,11 +59,9 @@
 ;;;   - 'send' using call/cc & parameterize'd i/o ports
 ;;;   - coroutines for sasl negotiation
 ;;;   - read-async & repsonse-handler
-;;;   - ssax:xml->sxml or lazy:xml->sxml
 ;;;   - default handlers
 ;;;   - syntax for defining sxpath based handlers
 ;;;   - improve parsing
-;;;   - chatbot exmples
 ;;;   
 #lang racket/base
 
@@ -99,8 +96,23 @@
               (password ,password)
               (resource ,resource))))
 
+(define (sasl-plain-auth username password)
+  `(auth ((xmlns "urn:ietf:params:xml:ns:xmpp-sasl") (mechanism "PLAIN"))
+         ,(sasl-plain-string username password)))
+
+;; binding
+;; TODO implement client chosen resources
+(define (xmpp-bind)
+  '(iq ((id "bind_1") (type "set"))
+       (bind ((xmlns "urn:ietf:params:xml:ns:xmpp-bind")))))
+
+;; session
+(define (xmpp-starttls)
+  '(starttls ((xmlns "urn:ietf:params:xml:ns:xmpp-tls"))))
+
 (define (xmpp-session host)
-  `(iq ((to ,host) (type "set") (id "session")) 
+  `(iq (;(to ,host)
+        (type "set") (id "session")) 
        (session ((xmlns "urn:ietf:params:xml:ns:xmpp-session"))))) 
 
 ;; messages
@@ -110,7 +122,7 @@
   `(message ((to ,to) (type ,type)) (body ,body)))
 
 
-; presence
+;; presence
 (define (presence #:from (from "")
                   #:to (to "") 
                   #:type (type "") 
@@ -129,14 +141,11 @@
             #:id (id ""))
   `(iq ((to ,to) (type ,type) ,body)))
 
-;; curried stanza disection (sxml stanza -> string)
-;; (define ((sxpath-element xpath (ns "")) stanza) 
-;;   (let ((node ((sxpath xpath (list (cons 'ns ns))) stanza)))
-;;     (if (empty? node) "" (car node))))
-;; curried stanz disection (xexpr stanza -> string)
+;; curried stanza disection 
 (define ((se-path-element sepath) stanza) 
   (let ((node (apply string-append  (se-path*/list sepath stanza))))
     (if (empty? node) "" node)))
+
 ;; message 
 (define message-from (se-path-element '(message #:from)))
 (define message-to (se-path-element '(message #:to)))
