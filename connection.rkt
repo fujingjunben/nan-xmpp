@@ -30,7 +30,7 @@
  [xmpp-version (-> string?)])
 
 
-(define (xmpp-version) "nan-xmpp v 0.20")
+(define (xmpp-version) "nan-xmpp v 0.23")
 (define port 5222)
 (define ssl-port 5223)
 

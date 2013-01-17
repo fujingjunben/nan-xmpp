@@ -37,14 +37,13 @@
 ;;;   - parse (some) xml reponses from server
 ;;;   - handlers for responses
 ;;;   - basic roster handling (rfc 3921 sec.7)
+;;;   - plaintext/tls/sasl negotiation (rfc 3920 sec.5 & 6) 
+;;;   - encrypted connections using tls on port 5222
 ;;;
 ;;;  features to implement
 ;;;   - account creation
 ;;;   - managing subscriptions & rosters (rfc 3921 sec.6 & 8)
 ;;;   - error handling for rosters (rfc 3921 sec.7)
-;;;   - plaintext/tls/sasl negotiation (rfc 3920 sec.5 & 6) 
-;;;   - encrypted connections using tls on port 5222
-;;;   - correct namespaces in sxml
 ;;;   - message types
 ;;;   - maintain session ids
 ;;;   - maintain threads
@@ -60,11 +59,9 @@
 ;;;   - 'send' using call/cc & parameterize'd i/o ports
 ;;;   - coroutines for sasl negotiation
 ;;;   - read-async & repsonse-handler
-;;;   - ssax:xml->sxml or lazy:xml->sxml
 ;;;   - default handlers
 ;;;   - syntax for defining sxpath based handlers
 ;;;   - improve parsing
-;;;   - chatbot exmples
 ;;;   
 #lang racket/base
 
