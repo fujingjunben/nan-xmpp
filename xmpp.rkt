@@ -99,8 +99,23 @@
               (password ,password)
               (resource ,resource))))
 
+(define (sasl-plain-auth username password)
+  `(auth ((xmlns "urn:ietf:params:xml:ns:xmpp-sasl") (mechanism "PLAIN"))
+         ,(sasl-plain-string username password)))
+
+;; binding
+;; TODO implement client chosen resources
+(define (xmpp-bind)
+  '(iq ((id "bind_1") (type "set"))
+       (bind ((xmlns "urn:ietf:params:xml:ns:xmpp-bind")))))
+
+;; session
+(define (xmpp-starttls)
+  '(starttls ((xmlns "urn:ietf:params:xml:ns:xmpp-tls"))))
+
 (define (xmpp-session host)
-  `(iq ((to ,host) (type "set") (id "session")) 
+  `(iq (;(to ,host)
+        (type "set") (id "session")) 
        (session ((xmlns "urn:ietf:params:xml:ns:xmpp-session"))))) 
 
 ;; messages
@@ -110,7 +125,7 @@
   `(message ((to ,to) (type ,type)) (body ,body)))
 
 
-; presence
+;; presence
 (define (presence #:from (from "")
                   #:to (to "") 
                   #:type (type "") 
@@ -129,14 +144,11 @@
             #:id (id ""))
   `(iq ((to ,to) (type ,type) ,body)))
 
-;; curried stanza disection (sxml stanza -> string)
-;; (define ((sxpath-element xpath (ns "")) stanza) 
-;;   (let ((node ((sxpath xpath (list (cons 'ns ns))) stanza)))
-;;     (if (empty? node) "" (car node))))
-;; curried stanz disection (xexpr stanza -> string)
+;; curried stanza disection 
 (define ((se-path-element sepath) stanza) 
   (let ((node (apply string-append  (se-path*/list sepath stanza))))
     (if (empty? node) "" node)))
+
 ;; message 
 (define message-from (se-path-element '(message #:from)))
 (define message-to (se-path-element '(message #:to)))
