@@ -139,23 +139,25 @@
 	(user (jid-user jid))
 	(resource (jid-resource jid)))
     (send-string (connection-o-port conn) (xmpp-stream host))
-    (displayln encrypt)
-    (when (and encrypt
-               (eq? (connection-encryption conn) 'none))
+    (cond
+     ((and encrypt (eq? (connection-encryption conn) 'none))
+      ;; tcp connection - tls/sasl are to negotiate
+      (xmpp-receive-blocking conn) ;receiving stream from server
       (negotiate-tls conn)
-      (displayln (xmpp-receive-blocking conn))
       (xmpp-send conn (sasl-plain-auth (jid-user jid) pass))
-      (displayln (xmpp-receive-blocking conn))
+      (unless (eq? (car (xmpp-receive-blocking conn))
+                   'success)
+        (raise "SASL negotiation failed"))
       (send-string (connection-o-port conn) (xmpp-stream host))
-      )
-    (displayln (xmpp-receive-blocking conn))
-    (xmpp-send conn (xmpp-bind))
-    ;(xmpp-send conn (xmpp-session host))           
-    ;(xmpp-send conn (xmpp-auth user pass resource))
-    ;(xmpp-send conn (presence))
-    
-    (displayln (xmpp-receive-blocking conn))
-    ))
+      (xmpp-receive-blocking conn) ;receiving stream
+      (xmpp-send conn (xmpp-bind))
+      (unless (string=? (iq-type (xmpp-receive-blocking conn))
+                   "result")
+        (raise "Resource binding failed")))
+     (else
+      ;; tls connection - everything should work just fine
+      (xmpp-send conn (xmpp-session host))           
+      (xmpp-send conn (xmpp-auth user pass resource))))))
 
 (define (negotiate-tls conn)
   (xmpp-send conn (xmpp-starttls))
@@ -163,7 +165,7 @@
     (let ((sz (xmpp-receive-blocking conn)))
       (displayln sz)
       (case (car sz)
-        ('failure (new-connection-tcp))
+        ('failure (raise "TLS negotiation failed"))
         ('proceed (parameterize ((current-custodian (connection-custodian conn)))
                     (let-values ([(ssl-in ssl-out)
                                   (ports->ssl-ports (connection-i-port conn)
@@ -171,8 +173,10 @@
                                                     #:encrypt 'tls)])
                       (set-connection-i-port! conn ssl-in)
                       (set-connection-o-port! conn ssl-out)
-                      (set-connection-encryption! 'tls)
-                      (send-string (connection-o-port conn) (xmpp-stream (connection-host conn))))))
+                      (set-connection-encryption! conn 'tls)
+                      ;; send/receive stream-header
+                      (send-string (connection-o-port conn) (xmpp-stream (connection-host conn)))
+                      (xmpp-receive-blocking conn))))
         (else (loop))))))
 
 
