@@ -22,6 +22,8 @@
  [xmpp-send (-> connection? any/c void?)]
  [open-session (->* (connection? string? string?) (boolean?) void?)]
  [xmpp-receive (-> connection? any/c)]
+ [xmpp-set-handler (-> connection? (-> any/c void) void)]
+ [xmpp-stop-handler (-> connection? void)]
  [send-string (port? string? . -> . any)]
  [new-connection (string? . -> . connection?)]
  [kill-connection! (connection? . -> . void)]
