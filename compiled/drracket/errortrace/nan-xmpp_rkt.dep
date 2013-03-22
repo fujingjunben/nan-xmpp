@@ -1,0 +1,1 @@
+("5.3" ("31e8d7b6d42926249ab5aa3aaef30a1216432d6a" . "0eb347d8ce66b2ba410b79125d39bee0f8af49a1") #"C:\\private\\scheme\\myprograms\\nan-xmpp\\connection.rkt" #"C:\\private\\scheme\\myprograms\\nan-xmpp\\xmpp.rkt" #"C:\\private\\scheme\\myprograms\\nan-xmpp\\muc.rkt" (collects #"racket" #"base.rkt") (collects #"racket" #"base" #"lang" #"reader.rkt"))
