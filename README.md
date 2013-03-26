@@ -27,7 +27,7 @@ currently documented in the file `xmpp.rkt`
     (define (read-input prompt)
       (display prompt)
       (read-line))
-   
+    
     (define jid (read-input "jid: "))
     (define password (read-input "password: "))
     (define to (read-input "chat to: "))
@@ -41,16 +41,15 @@ currently documented in the file `xmpp.rkt`
         ((list 'presence _ ...) (print-presence sz))
         (_ 'do-nothing)))
     
-    (xmpp-handle 'set-handler conn handler)
+    (xmpp-set-handler conn handler)
     
     (let message-loop () 
       (define txt (read-line))
       (unless (string=? txt "/exit")
         (xmpp-send conn (message #:to to #:body txt))                      
         (message-loop)))
-    
-    (kill-connection! conn)
 
+    (kill-connection! conn)
 ## possibly interesting extensions to implement. 
 
 see http://xmpp.org/extensions/

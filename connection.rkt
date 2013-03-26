@@ -22,6 +22,7 @@
  [xmpp-send (-> connection? any/c void?)]
  [open-session (->* (connection? string? string?) (boolean?) void?)]
  [xmpp-receive (-> connection? any/c)]
+ [xmpp-receive-blocking (->* (connection?) (number?) any/c)] 
  [xmpp-set-handler (-> connection? (-> any/c void) void)]
  [xmpp-stop-handler (-> connection? void)]
  [send-string (port? string? . -> . any)]
@@ -48,44 +49,43 @@
 ;;(xmpp-set-handler conn handler-proc)
 ;;(xmpp-stop-handler conn)
 (struct h-thread (handler thread) #:mutable)
-
 (define-values (xmpp-set-handler xmpp-stop-handler)
   ;;handler-hash is storing the state
   (let ((handler-hash (make-hash)))
-      
-      (define (receive-handle-thread conn)
-        ;;creates a thread with handling procedure from handler-hash
-        (parameterize ((current-custodian (connection-custodian conn)))
-          (thread (lambda ()
-                    (let handler-loop ()
-                      (define sz (xmpp-receive-blocking conn))
-                      (define handler-proc (h-thread-handler
-                                            (hash-ref handler-hash conn)))
-                      (handler-proc sz)
-                      (handler-loop))))))
     
-      (values
-       ;;xmpp-set-handler
-       (λ (conn handler-proc)
-         (define h-t (hash-ref handler-hash conn #f))
-         (if h-t
-             (set-h-thread-handler! h-t handler-proc)
-             (hash-set! handler-hash
-                        conn (h-thread handler-proc
-                                       (receive-handle-thread conn)))))
-       ;;xmpp-stop-handler
-       (λ (conn)  
-         (define h-t (hash-ref handler-hash conn #f))
-         (when h-t
-           (kill-thread (h-thread-thread h-t))
-           (hash-remove! handler-hash conn))))))
+    (define (receive-handle-thread conn)
+      ;;creates a thread with handling procedure from handler-hash
+      (parameterize ((current-custodian (connection-custodian conn)))
+        (thread (lambda ()
+                  (let handler-loop ()
+                    (define sz (xmpp-receive-blocking conn))
+                    (define handler-proc (h-thread-handler
+                                          (hash-ref handler-hash conn)))
+                    (handler-proc sz)
+                    (handler-loop))))))
+    
+    (values
+     ;;xmpp-set-handler
+     (λ (conn handler-proc)
+       (define h-t (hash-ref handler-hash conn #f))
+       (if h-t
+           (set-h-thread-handler! h-t handler-proc)
+           (hash-set! handler-hash
+                      conn (h-thread handler-proc
+                                     (receive-handle-thread conn)))))
+     ;;xmpp-stop-handler
+     (λ (conn)  
+       (define h-t (hash-ref handler-hash conn #f))
+       (when h-t
+         (kill-thread (h-thread-thread h-t))
+         (hash-remove! handler-hash conn))))))
 
-(define (xmpp-receive-blocking conn)
+(define (xmpp-receive-blocking conn (time-interval 0.1))
   ;;;loops until a stanza is received
   (let loop ()
     (let ((sz (xmpp-receive conn)))
       (or sz
-          (begin (sleep 0.1)
+          (begin (sleep time-interval)
                  (loop))))))
 
 (define (xmpp-receive conn)
@@ -98,11 +98,11 @@
      (define szs (se-path*/list '(port)
                                 (string->xexpr
                                  (string-append "<port>" str "</port>")))) 
-     (cond 
-       ((empty? szs) #f)
-       ((empty? (cdr szs)) (car szs))
-       (else (set-connection-buffer! conn (cdr szs))
-             (car szs))))
+     (match szs
+       ('() #f)
+       (`(,head) head)
+       (`(,head . ,tail) (set-connection-buffer! conn tail)
+                         head)))
     (else (define b (connection-buffer conn))
           (set-connection-buffer! conn (cdr b))
           (car b))))
@@ -144,6 +144,7 @@
        ;; tcp connection - tls/sasl are to negotiate
        (xmpp-receive-blocking conn) ;receiving stream from server
        (negotiate-tls conn)
+       ;;next is SASL negotiation
        (xmpp-send conn (sasl-plain-auth (jid-user jid) pass))
        (unless (eq? (car (xmpp-receive-blocking conn))
                     'success)
@@ -164,19 +165,19 @@
   (let loop ()
     (let ((sz (xmpp-receive-blocking conn)))
       (displayln sz)
-      (case (car sz)
-        ('failure (raise "TLS negotiation failed"))
-        ('proceed (parameterize ((current-custodian (connection-custodian conn)))
-                    (let-values ([(ssl-in ssl-out)
-                                  (ports->ssl-ports (connection-i-port conn)
-                                                    (connection-o-port conn)
-                                                    #:encrypt 'tls)])
-                      (set-connection-i-port! conn ssl-in)
-                      (set-connection-o-port! conn ssl-out)
-                      (set-connection-encryption! conn 'tls)
-                      ;; send/receive stream-header
-                      (send-string (connection-o-port conn) (xmpp-stream (connection-host conn)))
-                      (xmpp-receive-blocking conn))))
+      (match sz
+        (`(failure . ,_) (raise "TLS negotiation failed"))
+        (`(proceed . ,_) (parameterize ((current-custodian (connection-custodian conn)))
+                           (let-values ([(ssl-in ssl-out)
+                                         (ports->ssl-ports (connection-i-port conn)
+                                                           (connection-o-port conn)
+                                                           #:encrypt 'tls)])
+                             (set-connection-i-port! conn ssl-in)
+                             (set-connection-o-port! conn ssl-out)
+                             (set-connection-encryption! conn 'tls)
+                             ;; send/receive stream-header
+                             (send-string (connection-o-port conn) (xmpp-stream (connection-host conn)))
+                             (xmpp-receive-blocking conn))))
         (else (loop))))))
 
 
